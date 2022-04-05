@@ -2497,7 +2497,7 @@ func TestRaft_runFollower_State_Transition(t *testing.T) {
 			tt.fields.conf.CommitTimeout = 5 * time.Millisecond
 			tt.fields.conf.SnapshotThreshold = 100
 			tt.fields.conf.TrailingLogs = 10
-			tt.fields.conf.skipStartup = true
+			tt.fields.conf.SkipStartup = true
 
 			// Create a raft instance and set the latest configuration
 			env1 := MakeRaft(t, tt.fields.conf, false)
