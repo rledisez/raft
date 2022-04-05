@@ -235,8 +235,8 @@ type Config struct {
 	// PreVoteDisabled deactivate the pre-vote feature when set to true
 	PreVoteDisabled bool
 
-	// skipStartup allows NewRaft() to bypass all background work goroutines
-	skipStartup bool
+	// SkipStartup allows NewRaft() to bypass all background work goroutines
+	SkipStartup bool
 }
 
 func (conf *Config) getOrCreateLogger() hclog.Logger {
