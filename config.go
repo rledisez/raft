@@ -241,7 +241,7 @@ type Config struct {
 	NoLegacyTelemetry bool
 
 	// skipStartup allows NewRaft() to bypass all background work goroutines
-	skipStartup bool
+	SkipStartup bool
 }
 
 func (conf *Config) getOrCreateLogger() hclog.Logger {
