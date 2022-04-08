@@ -235,12 +235,12 @@ func (r *Raft) runFollower() {
 				}
 			} else {
 				metrics.IncrCounter([]string{"raft", "transition", "heartbeat_timeout"}, 1)
-				if hasVote(r.configurations.latest, r.localID) {
+				if hasVote(r.configurations.latest, r.localID) && r.GetAllowCandidating() {
 					r.logger.Warn("heartbeat timeout reached, starting election", "last-leader-addr", lastLeaderAddr, "last-leader-id", lastLeaderID)
 					r.setState(Candidate)
 					return
 				} else if !didWarn {
-					r.logger.Warn("heartbeat timeout reached, not part of a stable configuration or a non-voter, not triggering a leader election")
+					r.logger.Warn("heartbeat timeout reached, not part of a stable configuration or a non-voter or not allowed to candidate, not triggering a leader election")
 					didWarn = true
 				}
 			}
@@ -1961,10 +1961,14 @@ func (r *Raft) initiateLeadershipTransfer(id *ServerID, address *ServerAddress) 
 
 // timeoutNow is what happens when a server receives a TimeoutNowRequest.
 func (r *Raft) timeoutNow(rpc RPC, req *TimeoutNowRequest) {
-	r.setLeader("", "")
-	r.setState(Candidate)
-	r.candidateFromLeadershipTransfer = true
-	rpc.Respond(&TimeoutNowResponse{}, nil)
+	if r.GetAllowCandidating() {
+		r.setLeader("", "")
+		r.setState(Candidate)
+		r.candidateFromLeadershipTransfer = true
+		rpc.Respond(&TimeoutNowResponse{}, nil)
+	} else {
+		rpc.Respond(nil, fmt.Errorf("not allowed to candidate"))
+	}
 }
 
 // setLatestConfiguration stores the latest configuration and updates a copy of it.
