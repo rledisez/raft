@@ -213,6 +213,11 @@ type Raft struct {
 
 	// mainThreadSaturation measures the saturation of the main raft goroutine.
 	mainThreadSaturation *saturationMetric
+
+	// allowCandidating is used in situation where the node must no become a
+	// leader in case of election.
+	allowCandidating     bool
+	allowCandidatingLock sync.Mutex
 }
 
 // BootstrapCluster initializes a server's storage with the given cluster
@@ -560,6 +565,7 @@ func NewRaft(conf *Config, fsm FSM, logs LogStore, stable StableStore, snaps Sna
 		leaderNotifyCh:        make(chan struct{}, 1),
 		followerNotifyCh:      make(chan struct{}, 1),
 		mainThreadSaturation:  newSaturationMetric([]string{"raft", "thread", "main", "saturation"}, 1*time.Second),
+		allowCandidating:      true,
 	}
 
 	r.conf.Store(*conf)
@@ -1242,4 +1248,16 @@ func (r *Raft) LeadershipTransferToServer(id ServerID, address ServerAddress) Fu
 	}
 
 	return r.initiateLeadershipTransfer(&id, &address)
+}
+
+func (r *Raft) SetAllowCandidating(v bool) {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	r.allowCandidating = v
+}
+
+func (r *Raft) GetAllowCandidating() bool {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	return r.allowCandidating
 }
