@@ -217,6 +217,11 @@ type Raft struct {
 	// preVoteDisabled control if the pre-vote feature is activated,
 	// prevote feature is disabled if set to true.
 	preVoteDisabled bool
+
+	// allowCandidating is used in situation where the node must no become a
+	// leader in case of election.
+	allowCandidating     bool
+	allowCandidatingLock sync.Mutex
 }
 
 // BootstrapCluster initializes a server's storage with the given cluster
@@ -566,6 +571,7 @@ func NewRaft(conf *Config, fsm FSM, logs LogStore, stable StableStore, snaps Sna
 		followerNotifyCh:      make(chan struct{}, 1),
 		mainThreadSaturation:  newSaturationMetric([]string{"raft", "thread", "main", "saturation"}, 1*time.Second),
 		preVoteDisabled:       conf.PreVoteDisabled || !transportSupportPreVote,
+		allowCandidating:      true,
 	}
 	if !transportSupportPreVote && !conf.PreVoteDisabled {
 		r.logger.Warn("pre-vote is disabled because it is not supported by the Transport")
@@ -1269,4 +1275,16 @@ func (r *Raft) LeadershipTransferToServer(id ServerID, address ServerAddress) Fu
 	}
 
 	return r.initiateLeadershipTransfer(&id, &address)
+}
+
+func (r *Raft) SetAllowCandidating(v bool) {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	r.allowCandidating = v
+}
+
+func (r *Raft) GetAllowCandidating() bool {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	return r.allowCandidating
 }
