@@ -199,6 +199,11 @@ type Raft struct {
 	// leadershipTransferCh is used to start a leadership transfer from outside of
 	// the main thread.
 	leadershipTransferCh chan *leadershipTransferFuture
+
+	// allowCandidating is used in situation where the node must no become a
+	// leader in case of election.
+	allowCandidating     bool
+	allowCandidatingLock sync.Mutex
 }
 
 // BootstrapCluster initializes a server's storage with the given cluster
@@ -543,6 +548,7 @@ func NewRaft(conf *Config, fsm FSM, logs LogStore, stable StableStore, snaps Sna
 		bootstrapCh:           make(chan *bootstrapFuture),
 		observers:             make(map[uint64]*Observer),
 		leadershipTransferCh:  make(chan *leadershipTransferFuture, 1),
+		allowCandidating:      true,
 	}
 
 	r.conf.Store(*conf)
@@ -1219,4 +1225,16 @@ func (r *Raft) LeadershipTransferToServer(id ServerID, address ServerAddress) Fu
 	}
 
 	return r.initiateLeadershipTransfer(&id, &address)
+}
+
+func (r *Raft) AllowCandidating() {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	r.allowCandidating = true
+}
+
+func (r *Raft) DisallowCandidating() {
+	r.allowCandidatingLock.Lock()
+	defer r.allowCandidatingLock.Unlock()
+	r.allowCandidating = false
 }

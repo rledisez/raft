@@ -213,12 +213,15 @@ func (r *Raft) runFollower() {
 				}
 			} else {
 				metrics.IncrCounter([]string{"raft", "transition", "heartbeat_timeout"}, 1)
-				if hasVote(r.configurations.latest, r.localID) {
+				r.allowCandidatingLock.Lock()
+				allowCandidating := r.allowCandidating
+				r.allowCandidatingLock.Unlock()
+				if hasVote(r.configurations.latest, r.localID) && allowCandidating {
 					r.logger.Warn("heartbeat timeout reached, starting election", "last-leader", lastLeader)
 					r.setState(Candidate)
 					return
 				} else if !didWarn {
-					r.logger.Warn("heartbeat timeout reached, not part of a stable configuration or a non-voter, not triggering a leader election")
+					r.logger.Warn("heartbeat timeout reached, not part of a stable configuration or a non-voter or not allowed to candidate, not triggering a leader election")
 					didWarn = true
 				}
 			}
