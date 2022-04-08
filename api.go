@@ -926,6 +926,21 @@ func (r *Raft) RemoveServer(id ServerID, prevIndex uint64, timeout time.Duration
 	}, timeout)
 }
 
+// PromoteVoter will give a server a vote, if it does not have one. If the
+// server is not in the cluster, this does nothing. This must be run on the
+// leader or it will fail. For prevIndex and timeout, see AddVoter.
+func (r *Raft) PromoteVoter(id ServerID, prevIndex uint64, timeout time.Duration) IndexFuture {
+	if r.protocolVersion < 3 {
+		return errorFuture{ErrUnsupportedProtocol}
+	}
+
+	return r.requestConfigChange(configurationChangeRequest{
+		command:   Promote,
+		serverID:  id,
+		prevIndex: prevIndex,
+	}, timeout)
+}
+
 // DemoteVoter will take away a server's vote, if it has one. If present, the
 // server will continue to receive log entries, but it won't participate in
 // elections or log entry commitment. If the server is not in the cluster, this
