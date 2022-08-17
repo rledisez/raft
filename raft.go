@@ -1846,10 +1846,14 @@ func (r *Raft) initiateLeadershipTransfer(id *ServerID, address *ServerAddress) 
 
 // timeoutNow is what happens when a server receives a TimeoutNowRequest.
 func (r *Raft) timeoutNow(rpc RPC, req *TimeoutNowRequest) {
-	r.setLeader("")
-	r.setState(Candidate)
-	r.candidateFromLeadershipTransfer = true
-	rpc.Respond(&TimeoutNowResponse{}, nil)
+	if r.allowCandidating {
+		r.setLeader("")
+		r.setState(Candidate)
+		r.candidateFromLeadershipTransfer = true
+		rpc.Respond(&TimeoutNowResponse{}, nil)
+	} else {
+		rpc.Respond(nil, fmt.Errorf("not allowed to candidate"))
+	}
 }
 
 // setLatestConfiguration stores the latest configuration and updates a copy of it.
