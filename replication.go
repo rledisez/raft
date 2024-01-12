@@ -404,7 +404,12 @@ func (r *Raft) heartbeat(s *followerReplication, stopCh chan struct{}) {
 		s.peerLock.RUnlock()
 
 		start := time.Now()
-		if err := r.trans.AppendEntries(peer.ID, peer.Address, &req, &resp); err != nil {
+		err := func() error {
+			t := time.Now()
+			defer metrics.MeasureSinceWithLabels([]string{"raft", "replication", "heartbeat", "transAppendEntries"}, t, []metrics.Label{{Name: "peer_id", Value: string(peer.ID)}})
+			return r.trans.AppendEntries(peer.ID, peer.Address, &req, &resp)
+		}()
+		if err != nil {
 			nextBackoffTime := cappedExponentialBackoff(failureWait, failures, maxFailureScale, r.config().HeartbeatTimeout/2)
 			r.logger.Error("failed to heartbeat to", "peer", peer.Address, "backoff time",
 				nextBackoffTime, "error", err)
@@ -417,9 +422,17 @@ func (r *Raft) heartbeat(s *followerReplication, stopCh chan struct{}) {
 			}
 		} else {
 			if failures > 0 {
-				r.observe(ResumedHeartbeatObservation{PeerID: peer.ID})
+				func() {
+					t := time.Now()
+					defer metrics.MeasureSinceWithLabels([]string{"raft", "replication", "heartbeat", "observe"}, t, []metrics.Label{{Name: "peer_id", Value: string(peer.ID)}})
+					r.observe(ResumedHeartbeatObservation{PeerID: peer.ID})
+				}()
 			}
-			s.setLastContact()
+			func() {
+				t := time.Now()
+				defer metrics.MeasureSinceWithLabels([]string{"raft", "replication", "heartbeat", "setLastContact"}, t, []metrics.Label{{Name: "peer_id", Value: string(peer.ID)}})
+				s.setLastContact()
+			}()
 			failures = 0
 			labels := []metrics.Label{{Name: "peer_id", Value: string(peer.ID)}}
 			metrics.MeasureSinceWithLabels([]string{"raft", "replication", "heartbeat"}, start, labels)
